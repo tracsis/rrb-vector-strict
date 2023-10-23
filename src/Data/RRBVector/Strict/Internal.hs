@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Data.RRBVector.Internal
+module Data.RRBVector.Strict.Internal
     ( Vector(..)
     , Tree(..)
     , Shift
@@ -30,7 +30,11 @@ module Data.RRBVector.Internal
     , zip, zipWith, unzip, unzipWith
     ) where
 
+#if !(MIN_VERSION_base(4,18,0))
 import Control.Applicative (Alternative, liftA2)
+#else
+import Control.Applicative (Alternative)
+#endif
 import qualified Control.Applicative
 import Control.DeepSeq
 import Control.Monad (when, MonadPlus)
@@ -57,8 +61,8 @@ import Data.Foldable.WithIndex
 import Data.Traversable.WithIndex
 
 import Data.Primitive.PrimArray hiding (sizeofPrimArray) -- use @length@ of the @A.Array@ instead
-import qualified Data.RRBVector.Internal.Array as A
-import qualified Data.RRBVector.Internal.Buffer as Buffer
+import qualified Data.RRBVector.Strict.Internal.Array as A
+import qualified Data.RRBVector.Strict.Internal.Buffer as Buffer
 
 infixr 5 ><
 infixr 5 <|
@@ -144,7 +148,7 @@ computeSizes :: Shift -> A.Array (Tree a) -> Tree a
 computeSizes !sh arr
     | isBalanced = Balanced arr
     | otherwise = runST $ do
-        sizes <- newPrimArray (length arr)
+        sizes <- newPrimArray len
         let loop acc i
                 | i < len =
                     let size = treeSize (down sh) (A.index arr i)
