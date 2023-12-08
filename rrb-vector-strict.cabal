@@ -1,5 +1,5 @@
 name:               rrb-vector-strict
-version:            0.2.0.1
+version:            0.2.1.0
 synopsis:           Efficient RRB-Vectors
 description:
   An RRB-Vector is an efficient sequence data structure.
@@ -31,8 +31,9 @@ tested-with:
   GHC == 8.10.7
   GHC == 9.0.2
   GHC == 9.2.8
-  GHC == 9.4.7
+  GHC == 9.4.8
   GHC == 9.6.3
+  GHC == 9.8.1
 
 source-repository head
   type:     git
@@ -61,7 +62,7 @@ test-suite test
     Strictness
   type:                 exitcode-stdio-1.0
   ghc-options:          -Wall -Wno-orphans -Wno-type-defaults
-  build-depends:        base, deepseq, quickcheck-classes-base, rrb-vector-strict, tasty, tasty-quickcheck
+  build-depends:        base, containers, deepseq, quickcheck-classes-base, rrb-vector-strict, tasty, tasty-quickcheck
   if impl(ghc >= 8.6)
     build-depends:      nothunks
   default-language:     Haskell2010
