@@ -174,7 +174,7 @@ computeSizes !sh arr
           where
             subtree = A.index arr i
 
--- Integer log base 2.
+-- | Integer log base 2.
 log2 :: Int -> Int
 log2 x = bitSizeMinus1 - countLeadingZeros x
   where
@@ -343,7 +343,7 @@ instance Applicative Vector where
     pure = singleton
     fs <*> xs = foldl' (\acc f -> acc >< map f xs) empty fs
     liftA2 f xs ys = foldl' (\acc x -> acc >< map (f x) ys) empty xs
-    xs *> ys = foldl' (\acc _ -> acc >< ys) empty xs
+    xs *> ys = stimes (length xs) ys
     xs <* ys = foldl' (\acc x -> acc >< replicate (length ys) x) empty xs
 
 instance Monad Vector where
@@ -653,20 +653,32 @@ deleteAt :: Int -> Vector a -> Vector a
 deleteAt i v = let (left, right) = splitAt (i + 1) v in take i left >< right
 
 -- | \(O(n)\). Find the first index from the left that satisfies the predicate.
+--
+-- @since 0.2.1.0
 findIndexL :: (a -> Bool) -> Vector a -> Maybe Int
 findIndexL f = ifoldr (\i x acc -> if f x then Just i else acc) Nothing
+{-# INLINE findIndexL #-}
 
 -- | \(O(n)\). Find the first index from the right that satisfies the predicate.
+--
+-- @since 0.2.1.0
 findIndexR :: (a -> Bool) -> Vector a -> Maybe Int
 findIndexR f = ifoldl (\i acc x -> if f x then Just i else acc) Nothing
+{-# INLINE findIndexR #-}
 
 -- | \(O(n)\). Find the indices that satisfy the predicate, starting from the left.
+--
+-- @since 0.2.1.0
 findIndicesL :: (a -> Bool) -> Vector a -> [Int]
 findIndicesL f = ifoldr (\i x acc -> if f x then i : acc else acc) []
+{-# INLINE findIndicesL #-}
 
 -- | \(O(n)\). Find the indices that satisfy the predicate, starting from the right.
+--
+-- @since 0.2.1.0
 findIndicesR :: (a -> Bool) -> Vector a -> [Int]
 findIndicesR f = ifoldl (\i acc x -> if f x then i : acc else acc) []
+{-# INLINE findIndicesR #-}
 
 -- concatenation
 
@@ -678,12 +690,9 @@ findIndicesR f = ifoldl (\i acc x -> if f x then i : acc else acc) []
 Empty >< v = v
 v >< Empty = v
 Root size1 sh1 tree1 >< Root size2 sh2 tree2 =
-    let maxShift = max sh1 sh2
-        upMaxShift = up maxShift
+    let upMaxShift = up (max sh1 sh2)
         newArr = mergeTrees tree1 sh1 tree2 sh2
-    in if length newArr == 1
-        then Root (size1 + size2) maxShift (A.head newArr)
-        else Root (size1 + size2) upMaxShift (computeSizes upMaxShift newArr)
+    in normalize $ Root (size1 + size2) upMaxShift (computeSizes upMaxShift newArr)
   where
     mergeTrees tree1@(Leaf arr1) !_ tree2@(Leaf arr2) !_
         | length arr1 == blockSize = A.from2 tree1 tree2
@@ -768,7 +777,10 @@ x <| Root size sh tree
     -- compute the shift at which the new branch needs to be inserted (0 means there is space in the leaf)
     -- the size is computed for efficient calculation of the shift in a balanced subtree
     computeShift !sz !sh !min (Balanced _) =
-        let newShift = (log2 sz `div` blockShift) * blockShift
+        -- @sz - 1@ is the index of the last element
+        let hiShift = max ((log2 (sz - 1) `div` blockShift) * blockShift) 0 -- the shift of the root when normalizing
+            hi = (sz - 1) `unsafeShiftR` hiShift -- the length of the root node when normalizing minus 1
+            newShift = if hi < blockMask then hiShift else hiShift + blockShift
         in if newShift > sh then min else newShift
     computeShift _ sh min (Unbalanced arr sizes) =
         let sz' = indexPrimArray sizes 0 -- the size of the first subtree
